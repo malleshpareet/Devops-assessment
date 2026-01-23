@@ -4,16 +4,14 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Docker Hub...
-      - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+      - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
 
   build:
     commands:
-      - echo Build started on `date`
-
-      - echo Building backend Docker image...
+      - echo Building backend image...
       - docker build -t $DOCKER_USERNAME/devops-backend ./backend
 
-      - echo Building frontend Docker image...
+      - echo Building frontend image...
       - docker build -t $DOCKER_USERNAME/devops-frontend ./frontend
 
   post_build:
@@ -24,8 +22,4 @@ phases:
       - echo Pushing frontend image...
       - docker push $DOCKER_USERNAME/devops-frontend
 
-      - echo Build completed on `date`
-
-artifacts:
-  files:
-    - '**/*'
+      - echo Build completed successfully!
