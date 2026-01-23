@@ -4,6 +4,12 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Docker Hub...
+      - |
+        if [ -z "$DOCKER_USERNAME" ] || [ -z "$DOCKER_PASSWORD" ]; then
+          echo "Error: DOCKER_USERNAME or DOCKER_PASSWORD not set in environment variables."
+          exit 1
+        fi
+      - echo "Logging in as $DOCKER_USERNAME..."
       - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
   build:
