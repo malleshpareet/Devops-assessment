@@ -17,7 +17,7 @@ services:
     build:
       context: ./frontend
       args:
-        - VITE_API_URL=http://192.168.99.100:8000
+        - VITE_API_URL=http://13.233.148.119:8000
     container_name: devops_frontend
     ports:
       - "3000:8080"
