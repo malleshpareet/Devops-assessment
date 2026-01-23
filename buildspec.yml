@@ -1,0 +1,34 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.10
+      nodejs: 20
+    commands:
+      - echo Installing dependencies...
+      - curl -L "https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+      - chmod +x /usr/local/bin/docker-compose
+
+  pre_build:
+    commands:
+      - echo Pre_build phase...
+      - echo Logging in to Docker Hub (if using private repos)...
+      # - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker images...
+      - docker-compose build
+
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker images (optional)...
+      # - docker-compose push
+
+artifacts:
+  files:
+    - '**/*'
+  name: devops-assessment-artifact
