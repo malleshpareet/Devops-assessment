@@ -4,28 +4,33 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Docker Hub...
-      - |
-        if [ -z "$DOCKER_USERNAME" ] || [ -z "$DOCKER_PASSWORD" ]; then
-          echo "Error: DOCKER_USERNAME or DOCKER_PASSWORD not set in environment variables."
-          exit 1
-        fi
-      - echo "Logging in as $DOCKER_USERNAME..."
-      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+      - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
 
   build:
     commands:
       - echo Building backend image...
-      - docker build -t $DOCKER_USERNAME/devops-backend ./backend
+      - docker build -t mallesh2210/devops-backend ./backend
 
       - echo Building frontend image...
-      - docker build -t $DOCKER_USERNAME/devops-frontend ./frontend
+      - docker build -t mallesh2210/devops-frontend ./frontend
 
   post_build:
     commands:
-      - echo Pushing backend image...
-      - docker push $DOCKER_USERNAME/devops-backend
+      - echo Pushing Docker images...
+      - docker push mallesh2210/devops-backend
+      - docker push mallesh2210/devops-frontend
 
-      - echo Pushing frontend image...
-      - docker push $DOCKER_USERNAME/devops-frontend
+      - echo Deploying to EC2 server...
 
-      - echo Build completed successfully!
+      - echo "$EC2_KEY" > key.pem
+      - chmod 600 key.pem
+
+      - ssh -o StrictHostKeyChecking=no -i key.pem $EC2_USER@$EC2_HOST "
+          cd ~/Devops-assessment &&
+          git pull origin main &&
+          docker-compose down &&
+          docker-compose pull &&
+          docker-compose up -d --build
+        "
+
+      - echo Deployment completed successfully 🚀
