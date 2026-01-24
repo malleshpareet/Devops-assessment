@@ -15,24 +15,14 @@ phases:
       - docker build -t mallesh2210/devops-frontend ./frontend
 
   post_build:
-    commands:
-      - echo Pushing Docker images...
-      - docker push mallesh2210/devops-backend
-      - docker push mallesh2210/devops-frontend
-
-      - echo Creating SSH key...
-      - echo "$EC2_KEY_B64" | base64 -d > key.pem
-      - chmod 600 key.pem
-
-      - echo Testing SSH connection...
-      - ssh -o StrictHostKeyChecking=no -i key.pem $EC2_USER@$EC2_HOST "echo SSH Connected"
-
-      - echo Deploying to EC2...
-      - ssh -o StrictHostKeyChecking=no -i key.pem $EC2_USER@$EC2_HOST "
-          cd ~/Devops-assessment &&
-          git pull origin main &&
-          docker-compose down &&
-          docker-compose up -d --build
-        "
-
-      - echo Deployment completed successfully!
+  commands:
+    - echo "Creating SSH key..."
+    - echo "$EC2_KEY_B64" | base64 -d > key.pem
+    - chmod 600 key.pem
+    - echo "Deploying to EC2..."
+    - ssh -o StrictHostKeyChecking=no -i key.pem $EC2_USER@$EC2_HOST "
+        cd ~/Devops-assessment &&
+        git pull origin main &&
+        docker-compose down &&
+        docker-compose up -d --build
+      "
