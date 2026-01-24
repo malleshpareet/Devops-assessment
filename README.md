@@ -58,3 +58,11 @@ A simple "Hello World" full-stack application built with **Django** (Backend) an
 - **Django**: Chosen for its robustness and ease of setting up a structured API.
 - **CORS**: Configured in Django to allow the React frontend to fetch data during local development.
 - **Responsive Design**: Custom CSS ensures the application looks premium on all screen sizes and supports dark mode.
+
+## Submission Details
+
+- **Deployed URL**: [http://13.233.148.119:3000](http://13.233.148.119:3000)
+- **Repository**: [https://github.com/malleshpareet/Devops-assessment](https://github.com/malleshpareet/Devops-assessment)
+
+### Application Screenshot
+![Application Screenshot](./screenshot.png)
