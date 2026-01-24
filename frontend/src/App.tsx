@@ -12,7 +12,7 @@ function App() {
     setLoading(true)
     setError(null)
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const apiUrl = import.meta.env.VITE_API_URL || '';
       const response = await axios.get(`${apiUrl}/api/hello/`)
       setMessage(response.data.message)
     } catch (err) {
