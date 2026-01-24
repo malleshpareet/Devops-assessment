@@ -1,0 +1,26 @@
+version: "3"
+
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: devops_backend_local
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=development-secret-key
+      - DEBUG=True
+      - ALLOWED_HOSTS=*
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      # args:
+      #   - VITE_API_URL=  <-- Default is empty string now in App.tsx, which works with Nginx proxy
+    container_name: devops_frontend_local
+    ports:
+      - "3000:8080"
+    depends_on:
+      - backend
+    restart: unless-stopped

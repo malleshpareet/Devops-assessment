@@ -1,119 +1,93 @@
-# DevOps Assessment - Full Stack Deployment
+# DevOps Assessment Documentation
 
-This repository contains the containerized "Hello World" full-stack application (Django + React), orchestrated with Docker Compose.
+This document serves as the final report for the DevOps Assessment.
 
-## Prerequisites
-- Docker & Docker Compose installed.
+## 1. Setup Guide
 
-## Project Structure
-- `backend/`: Django REST API
-- `frontend/`: React (Vite + TypeScript)
-- `docker-compose.yml`: Orchestration file
-- `DEVOPS.md`: This documentation
+### Part A: How to Run Locally
 
-## Setup Guide (Local)
+To run the application on your local machine using Docker Compose:
 
-1.  **Build and Run with Docker Compose**
-    Run the following command in the root directory:
+1.  **Clone the Repository**:
     ```bash
-    docker-compose up --build
+    git clone https://github.com/malleshpareet/Devops-assessment.git
+    cd Devops-assessment
     ```
 
-    This will:
-    - Build the Backend image (Django + Gunicorn).
-    - Build the Frontend image (React + Nginx).
-    - Start both services.
+2.  **Run with Docker Compose**:
+    We use a dedicated development compose file that builds images from source.
+    ```bash
+    docker-compose -f docker-compose.dev.yml up --build
+    ```
 
-2.  **Access the Application**
-    - **Frontend**: Open [http://localhost:3000](http://localhost:3000) in your browser.
-    - **Backend API**: Accessible at [http://localhost:8000/api/hello/](http://localhost:8000/api/hello/).
+3.  **Access the Application**:
+    - **Frontend**: [http://localhost:3000](http://localhost:3000)
+    - **Backend API**: [http://localhost:8000/api/hello/](http://localhost:8000/api/hello/)
 
-## Configuration which was implemented
-- **Backend**:
-    - Runs as a non-root user (`appuser`).
-    - Uses `gunicorn` for production-grade serving.
-    - Configuration (DEBUG, SECRET_KEY, ALLOWED_HOSTS) is managed via Environment Variables in `docker-compose.yml`.
-- **Frontend**:
-    - Multi-stage build (Node build -> Nginx serve).
-    - Runs as non-root user (using `nginxinc/nginx-unprivileged:alpine`).
-    - `VITE_API_URL` is baked in at build time via `docker-compose` args.
+### Part B: How to Run on the Server (AWS)
 
-## Troubleshooting Log
+The production setup uses **AWS EC2**, **CodePipeline**, and **CodeBuild** for automated deployment.
 
-### Challenge: Environment Variables in Static Frontend
-**Issue**: React (Vite) is a static frontend, so environment variables like `API_URL` are strictly build-time, but we needed to configure it via Docker Compose.
-**Solution**: 
-- Added `ARG VITE_API_URL` to `frontend/Dockerfile`.
-- Passed the value `http://localhost:8000` via `args` in `docker-compose.yml`.
-- Updated `App.tsx` to use `import.meta.env.VITE_API_URL` with a fallback.
+#### 1. Infrastructure Provisioning (Terraform)
+1.  Navigate to the `terraform/` directory.
+2.  Run `terraform init` and `terraform apply`.
+3.  This provisions the **EC2 instance** and **Security Groups**. Note the IP address output.
 
-### Challenge: Non-Root User for Nginx
-**Issue**: Standard Nginx requires root to bind to port 80.
-**Solution**: Used `nginxinc/nginx-unprivileged` image which listens on port 8080 by default and runs as a non-root user. Mapped port 3000 (host) to 8080 (container).
+#### 2. Deployment Pipeline (CI/CD)
+We use AWS CodePipeline. The workflow is fully automated:
+1.  **Push to GitHub**: Developer pushes code to `main`.
+2.  **AWS CodePipeline** triggers.
+3.  **AWS CodeBuild** runs `buildspec.yml`:
+    *   Logs into Docker Hub securely.
+    *   Builds and Pushes Docker Images (`mallesh2210/devops-backend`, `mallesh2210/devops-frontend`).
+    *   Uses `scp` to copy `docker-compose.yml` to the EC2 server.
+    *   Uses `ssh` to execute deployment commands on EC2 (`docker-compose pull && up -d`).
 
-## Phase 2: CI/CD Pipeline & Deployment
+#### 3. Accessing Production
+Once the pipeline finishes, access the public IP of your EC2 instance:
+- **URL**: `http://<EC2_PUBLIC_IP>:3000`
 
-### CI/CD Workflow
-A GitHub Actions workflow is set up in `.github/workflows/ci-cd.yml` which triggers on every push to the `main` branch.
+---
 
-**Steps:**
-1.  **Checkout Code**: Pulls the latest code.
-2.  **Login to Docker Hub**: Authenticates using GitHub Secrets (`DOCKER_USERNAME`, `DOCKER_PASSWORD`).
-3.  **Build and Push**: Builds optimized Docker images for Frontend and Backend and pushes them to Docker Hub.
+## 2. Troubleshooting Log
 
-**Required GitHub Secrets:**
-To enable the pipeline, add these repository secrets in GitHub (Settings > Secrets and variables > Actions):
-- `DOCKER_USERNAME`: Your Docker Hub username.
-- `DOCKER_PASSWORD`: Your Docker Hub access token (preferred) or password.
+During the implementation, I encountered and solved the following significant challenges:
 
-### Deployment Script (Standard)
-A PowerShell deployment script `deploy.ps1` is provided to automate local deployment.
+### Challenge 1: Frontend to Backend Communication (CORS vs Proxy)
+**The Problem**: 
+The React Frontend was unable to communicate with the Django Backend. 
+- Initially, the frontend tried to connect to `localhost:8000`, which worked locally but failed on the server or for other users because `localhost` referred to the client's machine, not the server.
+- Configuring the Backend IP explicitly involved Hardcoding IP addresses, which is brittle.
 
-**Capabilities:**
-- Checks for `docker-compose`.
-- Pulls the latest images from Docker Hub (if `DOCKER_USERNAME` is provided).
-- Starts the application using strict Docker Compose configuration.
+**The Solution**:
+I implemented an **Nginx Reverse Proxy**.
+1.  Updated `nginx.conf` in the Frontend container to intercept requests to `/api/`.
+2.  Configured it to proxy these requests internally to the backend container (`http://backend:8000`).
+    ```nginx
+    location /api/ {
+        proxy_pass http://backend:8000;
+        ...
+    }
+    ```
+3.  Updated the React `App.tsx` to use relative paths (`/api/hello/`) instead of absolute URLs. 
+**Result**: The browser treats the API call as local to the same server, avoiding CORS issues and hardcoded IPs entirely.
 
-**How to Run:**
-```powershell
-# Run locally (uses local build if no username supplied, or pulls if Env Var is set)
-.\deploy.ps1
+### Challenge 2: Secure Deployment via CI/CD
+**The Problem**: 
+Deployment failed because the AWS CodeBuild environment tried to run `git pull` on the EC2 instance. 
+- This failed with `exit status 128` (Permission denied) because the EC2 instance did not have SSH keys or tokens to access the private GitHub repository.
 
-# To forcefully pull from Docker Hub:
-.\deploy.ps1 -DockerUsername "your-docker-username"
-```
+**The Solution**:
+I refactored the deployment strategy to be "Push-based" rather than "Pull-based" regarding source code.
+1.  Instead of pulling code on the server, I configured the CI/CD pipeline to **build Docker images** and push them to Docker Hub.
+2.  I modified the deployment script to simply copy the `docker-compose.yml` file (using `scp`) and run `docker-compose pull`.
+**Result**: The server no longer needs Git credentials. It only needs to pull public/authenticated images from Docker Hub, which is much more secure and robust.
 
-## Phase 3: Infrastructure as Code (Terraform)
-A Terraform configuration is provided in the `terraform/` directory to provision an AWS EC2 instance with the required security configuration.
+### Challenge 3: GitHub Secret Scanning
+**The Problem**:
+While configuring the pipeline, a commit containing a Docker Personal Access Token was rejected by GitHub's Push Protection.
 
-### Resources Provisioned
-- **VPC & Networking**: Dedicated VPC, Public Subnet, Internet Gateway, and Route Table.
-- **Security Group**: Firewall rules strictly allowing:
-    - **Port 22 (SSH)**: For remote access.
-    - **Port 80 (HTTP)**: For web traffic.
-    - **Port 443 (HTTPS)**: For secure web traffic.
-- **EC2 Instance**: Ubuntu 22.04 LTS (`t2.micro` - Free Tier) with Docker pre-installed via User Data script.
-
-### How to Deploy (AWS)
-**Prerequisites**: Terraform installed and AWS Credentials configured (`aws configure`).
-
-1. Navigate to the terraform directory:
-   ```bash
-   cd terraform
-   ```
-
-2. Initialize Terraform:
-   ```bash
-   terraform init
-   ```
-
-3. Review the execution plan:
-   ```bash
-   terraform plan
-   ```
-
-4. Apply the configuration:
-   ```bash
-   terraform apply
-   ```
-   *Note: Ensure you Update `variables.tf` with your actual EC2 Key Pair name before applying.*
+**The Solution**:
+1.  I used `git reset` to rewind the history and remove the insecure commit.
+2.  I configured **AWS System Manager Parameter Store** / CodeBuild Environment Variables to store the secrets (`DOCKER_USERNAME`, `DOCKER_PASSWORD`).
+3.  I updated `buildspec.yml` to reference these environment variables instead of hardcoded values.
