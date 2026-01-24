@@ -4,7 +4,7 @@ phases:
   pre_build:
     commands:
       - echo Logging in to Docker Hub...
-      - echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
   build:
     commands:
@@ -20,17 +20,19 @@ phases:
       - docker push mallesh2210/devops-backend
       - docker push mallesh2210/devops-frontend
 
-      - echo Deploying to EC2 server...
-
-      - echo "$EC2_KEY" > key.pem
+      - echo Creating SSH key...
+      - echo "$EC2_KEY_B64" | base64 -d > key.pem
       - chmod 600 key.pem
 
+      - echo Testing SSH connection...
+      - ssh -o StrictHostKeyChecking=no -i key.pem $EC2_USER@$EC2_HOST "echo SSH Connected"
+
+      - echo Deploying to EC2...
       - ssh -o StrictHostKeyChecking=no -i key.pem $EC2_USER@$EC2_HOST "
           cd ~/Devops-assessment &&
           git pull origin main &&
           docker-compose down &&
-          docker-compose pull &&
           docker-compose up -d --build
         "
 
-      - echo Deployment completed successfully 🚀
+      - echo Deployment completed successfully!
