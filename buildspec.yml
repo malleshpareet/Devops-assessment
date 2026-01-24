@@ -27,12 +27,16 @@ phases:
       - echo Testing SSH connection...
       - ssh -o StrictHostKeyChecking=no -i key.pem $EC2_USER@$EC2_HOST "echo SSH Connected"
 
+      - echo Copying docker-compose.yml to EC2...
+      - ssh -o StrictHostKeyChecking=no -i key.pem $EC2_USER@$EC2_HOST "mkdir -p ~/Devops-assessment"
+      - scp -o StrictHostKeyChecking=no -i key.pem docker-compose.yml $EC2_USER@$EC2_HOST:~/Devops-assessment/docker-compose.yml
+
       - echo Deploying to EC2...
       - ssh -o StrictHostKeyChecking=no -i key.pem $EC2_USER@$EC2_HOST "
           cd ~/Devops-assessment &&
-          git pull origin main &&
+          docker-compose pull &&
           docker-compose down &&
-          docker-compose up -d --build
+          docker-compose up -d
         "
 
       - echo Deployment completed successfully!

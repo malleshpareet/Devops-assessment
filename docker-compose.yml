@@ -2,8 +2,7 @@ version: "3"
 
 services:
   backend:
-    build:
-      context: ./backend
+    image: mallesh2210/devops-backend:latest
     container_name: devops_backend
     ports:
       - "8000:8000"
@@ -14,10 +13,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    build:
-      context: ./frontend
-      args:
-        - VITE_API_URL=http://13.233.148.119:8000
+    image: mallesh2210/devops-frontend:latest
     container_name: devops_frontend
     ports:
       - "3000:8080"
